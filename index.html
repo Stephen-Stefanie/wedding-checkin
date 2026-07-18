@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<title>Stephen &amp; Stefanie — Guest Check-in</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#FAF9F5; --ink:#23241F; --ink-soft:#777468; --line:#E4E0D4;
+    --accent:#2F5D50; --accent-soft:#DCE8E3; --warn:#B3492C;
+    --gold:#A9863C; --gold-deep:#8C6D2C; --gold-light:#C9A961; --vip:#B08D2B;
+    --ink-strong:#141413;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;height:100%;font-family:'Inter',system-ui,sans-serif;color:var(--ink);
+    background:var(--paper);touch-action:manipulation;-webkit-user-select:none;user-select:none;}
+  button{font-family:inherit;cursor:pointer;touch-action:manipulation;}
+  input{font-family:inherit;}
+
+  .screen{display:none;flex-direction:column;align-items:center;min-height:100vh;padding:26px 26px 90px;}
+  .screen.active{display:flex;}
+
+  /* ---------- BRAND ---------- */
+  .brand{display:flex;flex-direction:column;align-items:center;gap:10px;margin:24px 0 6px;}
+  .brand-name{
+    font-family:'Cormorant Garamond',Georgia,serif;font-weight:600;font-size:44px;letter-spacing:.5px;
+    background:linear-gradient(115deg,var(--gold-deep),var(--gold-light) 45%,var(--gold-deep) 90%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;line-height:1;
+  }
+  .brand-sub{font-size:11px;letter-spacing:5px;text-transform:uppercase;color:var(--ink-soft);font-weight:600;}
+  .brand-rule{width:180px;height:2px;background:linear-gradient(90deg,transparent,var(--gold-light),transparent);}
+  .brand.small .brand-name{font-size:30px;}
+  .brand.small{margin:8px 0 2px;}
+
+  h2.lead{font-family:'Cormorant Garamond',Georgia,serif;font-weight:600;font-size:30px;margin:22px 0 6px;text-align:center;}
+  .sublead{font-size:15px;color:var(--ink-soft);text-align:center;margin:0 0 22px;max-width:560px;line-height:1.55;}
+
+  /* ---------- SEARCH ---------- */
+  .search-wrap{width:100%;max-width:620px;position:relative;}
+  .search-box{
+    width:100%;font-size:22px;padding:20px 24px 20px 58px;border:2px solid var(--line);
+    border-radius:20px;background:#fff;outline:none;transition:border-color .2s;
+    -webkit-user-select:text;user-select:text;
+  }
+  .search-box:focus{border-color:var(--gold);}
+  .search-ico{position:absolute;left:20px;top:50%;transform:translateY(-50%);font-size:22px;color:var(--ink-soft);pointer-events:none;}
+  .results{width:100%;max-width:620px;margin-top:14px;}
+  .result-row{
+    display:flex;align-items:center;gap:16px;width:100%;text-align:left;
+    background:#fff;border:1.5px solid var(--line);border-radius:16px;
+    padding:18px 20px;margin-bottom:10px;font-size:19px;transition:transform .1s;
+  }
+  .result-row:active{transform:scale(.985);background:var(--paper);}
+  .result-row .rname{flex:1;font-weight:600;}
+  .result-row .rtable{font-size:14px;color:#fff;border-radius:999px;padding:5px 14px;font-weight:600;white-space:nowrap;}
+  .result-row .rin{font-size:13px;color:var(--accent);font-weight:600;white-space:nowrap;}
+  .noresult{padding:26px;text-align:center;color:var(--ink-soft);font-size:16px;}
+
+  /* ---------- TABLE / PARTY ---------- */
+  .table-banner{
+    display:flex;flex-direction:column;align-items:center;gap:2px;margin:6px 0 16px;
+    padding:16px 40px;border-radius:20px;color:#fff;min-width:280px;
+  }
+  .table-banner .tb-name{font-family:'Cormorant Garamond',Georgia,serif;font-size:34px;font-weight:700;}
+  .table-banner .tb-sub{font-size:12.5px;opacity:.9;letter-spacing:1.5px;text-transform:uppercase;}
+  .party{width:100%;max-width:640px;display:flex;flex-direction:column;gap:10px;}
+  .member{
+    display:flex;align-items:center;gap:16px;background:#fff;border:2px solid var(--line);
+    border-radius:16px;padding:16px 18px;font-size:19px;transition:all .15s;width:100%;text-align:left;
+  }
+  .member .m-check{
+    width:34px;height:34px;border-radius:50%;border:2.5px solid var(--line);flex:none;
+    display:flex;align-items:center;justify-content:center;font-size:18px;color:#fff;transition:all .15s;
+  }
+  .member .m-name{flex:1;font-weight:600;}
+  .member .m-note{font-size:13px;color:var(--ink-soft);}
+  .member.selected{border-color:var(--gold);background:#FDF9EE;}
+  .member.selected .m-check{background:var(--gold);border-color:var(--gold);}
+  .member.done{opacity:.62;}
+  .member.done .m-check{background:var(--accent);border-color:var(--accent);}
+  .member:active:not(.done){transform:scale(.985);}
+
+  .actions{display:flex;gap:12px;margin-top:22px;width:100%;max-width:640px;}
+  .btn{
+    flex:1;border:none;border-radius:999px;padding:20px 26px;font-size:19px;font-weight:600;
+    background:#fff;color:var(--ink);border:2px solid var(--line);transition:transform .1s,opacity .2s;
+  }
+  .btn:active{transform:scale(.98);}
+  .btn.primary{background:var(--ink-strong);border-color:var(--ink-strong);color:#fff;}
+  .btn.gold{background:linear-gradient(120deg,#B08D2B,#8C6D2C);border-color:transparent;color:#fff;}
+  .btn:disabled{opacity:.35;}
+  .btn.slim{flex:none;padding:14px 22px;font-size:16px;}
+
+  /* ---------- SUCCESS ---------- */
+  .big-table{
+    font-family:'Cormorant Garamond',Georgia,serif;font-size:56px;font-weight:700;line-height:1.05;
+    text-align:center;margin:2px 0 0;
+  }
+  .checked-names{font-size:16px;color:var(--ink-soft);text-align:center;max-width:620px;line-height:1.6;margin:8px 0 4px;}
+  .map-wrap{
+    margin-top:16px;border:1.5px solid var(--line);border-radius:18px;background:#fff;
+    overflow:hidden;box-shadow:0 4px 22px rgba(0,0,0,.06);
+  }
+  .map-scale{transform-origin:top left;position:relative;width:2000px;height:1560px;}
+  .mtable{position:absolute;display:flex;align-items:center;justify-content:center;color:#fff;
+    text-align:center;border:2px solid rgba(255,255,255,.5);font-weight:600;}
+  .mtable.round{border-radius:50%;}
+  .mtable.rect{border-radius:10px;}
+  .mtable.dim{opacity:.28;}
+  .mtable.hl{
+    outline:10px solid var(--gold);outline-offset:6px;z-index:3;
+    animation:hlpulse 1.6s ease infinite;
+  }
+  @keyframes hlpulse{0%,100%{outline-color:var(--gold);}50%{outline-color:#E8CD8B;}}
+  .room-svg{position:absolute;left:0;top:0;}
+  .venue-img{position:absolute;}
+
+  /* ---------- STAFF ---------- */
+  .staff-dot{
+    position:fixed;left:14px;bottom:14px;width:30px;height:30px;border-radius:50%;
+    background:rgba(0,0,0,.05);border:none;z-index:40;
+  }
+  .staff-stats{
+    display:flex;gap:14px;align-items:stretch;width:100%;max-width:760px;margin-bottom:14px;flex-wrap:wrap;
+  }
+  .stat-card{flex:1;min-width:150px;background:#fff;border:1.5px solid var(--line);border-radius:16px;
+    padding:14px 18px;text-align:center;}
+  .stat-card .v{font-size:30px;font-weight:700;font-family:'Cormorant Garamond',serif;}
+  .stat-card .l{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink-soft);}
+  .stat-card.pct .v{color:var(--warn);}
+  .stat-card.pct.ok{background:#EAF5EC;border-color:#BFDCC6;}
+  .stat-card.pct.ok .v{color:#1E7A38;}
+  .door-banner{width:100%;max-width:760px;text-align:center;border-radius:14px;padding:12px;
+    font-weight:700;font-size:15px;letter-spacing:1px;margin-bottom:14px;}
+  .door-banner.closed{background:#F6EDE9;color:var(--warn);}
+  .door-banner.open{background:#1E7A38;color:#fff;}
+  .filters{display:flex;gap:8px;width:100%;max-width:760px;margin-bottom:10px;flex-wrap:wrap;}
+  .chipbtn{border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:10px 18px;font-size:15px;font-weight:600;}
+  .chipbtn.on{background:var(--ink-strong);color:#fff;border-color:var(--ink-strong);}
+  .staff-search{width:100%;max-width:760px;font-size:17px;padding:13px 18px;border:1.5px solid var(--line);
+    border-radius:12px;margin-bottom:10px;-webkit-user-select:text;user-select:text;outline:none;}
+  .staff-list{width:100%;max-width:760px;}
+  .srow{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid var(--line);
+    border-radius:12px;padding:11px 14px;margin-bottom:7px;font-size:16px;}
+  .srow .sn{flex:1;font-weight:600;}
+  .srow .st{font-size:13px;color:var(--ink-soft);min-width:90px;}
+  .srow .stime{font-size:12px;color:var(--ink-soft);}
+  .srow .stog{border:none;border-radius:999px;padding:9px 16px;font-size:13.5px;font-weight:700;min-width:110px;}
+  .srow .stog.in{background:var(--accent-soft);color:var(--accent);}
+  .srow .stog.out{background:#F1EFE9;color:var(--ink-soft);}
+  .staff-tools{display:flex;gap:10px;width:100%;max-width:760px;margin:14px 0 8px;flex-wrap:wrap;}
+
+  /* ---------- MISC ---------- */
+  .toast{
+    position:fixed;left:50%;bottom:30px;transform:translateX(-50%) translateY(8px);
+    background:var(--ink-strong);color:#fff;padding:13px 22px;border-radius:999px;
+    font-size:15px;box-shadow:0 8px 28px rgba(0,0,0,.28);z-index:80;opacity:0;
+    transition:opacity .25s,transform .25s;max-width:88vw;text-align:center;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  .load-card{background:#fff;border:1.5px solid var(--line);border-radius:20px;padding:34px;max-width:560px;text-align:center;}
+  ::-webkit-scrollbar{width:0;}
+
+  /* ---------- RED-PACKET LABELS (DK-11201: 29mm × 90mm, thermal monochrome) ---------- */
+  #labelArea{display:none;}
+  .plabel{
+    width:90mm;height:29mm;padding:2mm 4mm;box-sizing:border-box;overflow:hidden;
+    display:flex;flex-direction:column;justify-content:center;gap:.5mm;
+    page-break-after:always;break-after:page;background:#fff;color:#000;
+  }
+  .plabel .pl-top{font-size:2.6mm;letter-spacing:1.6mm;text-transform:uppercase;font-weight:600;
+    font-family:'Inter',sans-serif;white-space:nowrap;}
+  .plabel .pl-name{font-family:'Cormorant Garamond',Georgia,serif;font-weight:700;line-height:1.02;
+    white-space:nowrap;overflow:hidden;}
+  .plabel .pl-table{font-size:4.4mm;font-weight:700;font-family:'Inter',sans-serif;white-space:nowrap;}
+  @media print{
+    html,body{background:#fff;margin:0;}
+    .screen, .staff-dot, .toast{display:none !important;}
+    #labelArea{display:block;}
+    @page{size:90mm 29mm;margin:0;}
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ LOAD PLAN (first run) ============ -->
+<div class="screen" id="scrLoad">
+  <div class="brand">
+    <div class="brand-name">Stephen &amp; Stefanie</div>
+    <div class="brand-sub">Guest Check-in</div>
+    <div class="brand-rule"></div>
+  </div>
+  <div class="load-card">
+    <h2 class="lead" style="margin-top:0;">Set up this iPad</h2>
+    <p class="sublead" style="margin-bottom:24px;">
+      Load the seating plan file exported from the Magnum Opus planner
+      (<b>Save file</b> → a <b>.json</b> file). This only needs to be done once.
+    </p>
+    <input type="file" id="planInput" accept=".json,application/json" style="display:none;" />
+    <button class="btn gold" style="width:100%;" id="loadPlanBtn">Choose seating plan file</button>
+  </div>
+</div>
+
+<!-- ============ SEARCH ============ -->
+<div class="screen" id="scrSearch">
+  <div class="brand">
+    <div class="brand-sub">Welcome to</div>
+    <div class="brand-name">Stephen &amp; Stefanie's</div>
+    <div class="brand-sub">Wedding</div>
+    <div class="brand-rule"></div>
+  </div>
+  <h2 class="lead">Find your name</h2>
+  <p class="sublead">Type your name below. You can also check in family or friends seated at your table.</p>
+  <div class="search-wrap">
+    <span class="search-ico">🔍</span>
+    <input type="text" class="search-box" id="searchBox" placeholder="Your name…" autocomplete="off" autocorrect="off" />
+  </div>
+  <div class="results" id="results"></div>
+</div>
+
+<!-- ============ TABLE PARTY ============ -->
+<div class="screen" id="scrTable">
+  <div class="brand small">
+    <div class="brand-name">Stephen &amp; Stefanie</div>
+  </div>
+  <div class="table-banner" id="tableBanner"></div>
+  <p class="sublead" style="margin-bottom:14px;">
+    Tap everyone who is checking in <b>right now</b>. Guests arriving later can check themselves in.
+  </p>
+  <div class="party" id="partyList"></div>
+  <div class="actions">
+    <button class="btn" id="backToSearch">Back</button>
+    <button class="btn gold" id="confirmBtn">Check in</button>
+  </div>
+</div>
+
+<!-- ============ SUCCESS ============ -->
+<div class="screen" id="scrDone">
+  <div class="brand small">
+    <div class="brand-name">Stephen &amp; Stefanie</div>
+  </div>
+  <h2 class="lead" style="margin:10px 0 0;">Welcome! You're seated at</h2>
+  <div class="big-table" id="doneTable"></div>
+  <div class="checked-names" id="doneNames"></div>
+  <div class="map-wrap" id="mapWrap"><div class="map-scale" id="mapScale"></div></div>
+  <div class="actions" style="max-width:620px;">
+    <button class="btn" id="printLabelsBtn" style="flex:0 0 auto;">🏷&nbsp; Print labels</button>
+    <button class="btn primary" id="doneBtn" style="font-size:21px;padding:22px;">✓&nbsp; Check-in completed</button>
+  </div>
+</div>
+
+<!-- ============ STAFF ============ -->
+<div class="screen" id="scrStaff">
+  <div class="brand small"><div class="brand-name">Stephen &amp; Stefanie</div></div>
+  <h2 class="lead" style="margin:4px 0 10px;">Reception — Check-in Status</h2>
+  <div class="actions" style="max-width:760px;margin:0 0 10px;">
+    <button class="btn primary" id="staffBack">← Back to guest check-in</button>
+  </div>
+  <div class="staff-tools" style="margin:0 0 8px;">
+    <button class="btn slim" id="exportCsvBtn">Export CSV</button>
+    <button class="btn slim" id="testLabelBtn">🏷 Test label</button>
+    <button class="btn slim" id="autoLabelBtn">Auto-print labels: OFF</button>
+    <button class="btn slim" id="reloadPlanBtn">Load new plan</button>
+    <button class="btn slim" id="resetBtn" style="color:var(--warn);">Reset check-ins</button>
+  </div>
+  <div style="width:100%;max-width:760px;background:#fff;border:1.5px solid var(--line);border-radius:14px;padding:13px 15px;margin-bottom:14px;">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px;">
+      <input type="text" id="cloudUrlInput" placeholder="Firebase database URL (https://…firebaseio.com)"
+        style="flex:1;min-width:250px;font-size:14px;padding:10px 12px;border:1.5px solid var(--line);border-radius:9px;-webkit-user-select:text;user-select:text;" autocomplete="off" autocapitalize="off" />
+      <button class="btn slim" id="cloudSaveBtn">Connect</button>
+      <button class="btn slim" id="uploadPlanBtn">Upload plan to cloud</button>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+      <input type="text" id="bridgeInput" placeholder="Print helper address, optional (e.g. 192.168.1.20)"
+        style="flex:1;min-width:250px;font-size:14px;padding:10px 12px;border:1.5px solid var(--line);border-radius:9px;-webkit-user-select:text;user-select:text;" autocomplete="off" autocapitalize="off" />
+      <button class="btn slim" id="bridgeSaveBtn">Save</button>
+      <span id="cloudStatus" style="font-size:12.5px;font-weight:600;"></span>
+    </div>
+  </div>
+  <div class="staff-stats" id="staffStats"></div>
+  <div class="door-banner" id="doorBanner"></div>
+  <input type="text" class="staff-search" id="staffSearch" placeholder="Search guests…" autocomplete="off" />
+  <div class="filters" id="staffFilters">
+    <button class="chipbtn on" data-f="all">All</button>
+    <button class="chipbtn" data-f="in">Checked in</button>
+    <button class="chipbtn" data-f="out">Not yet</button>
+  </div>
+  <div class="staff-list" id="staffList"></div>
+</div>
+
+<!-- ============ RED-PACKET LABELS (Brother QL-820NWB · DK-11201 29×90mm, via AirPrint) ============ -->
+<div id="labelArea"></div>
+
+<button class="staff-dot" id="staffDot" aria-label="staff"></button>
+
+<script>
+/* ================= STATE ================= */
+const PLAN_KEY = 'mo.checkin.plan.v1';
+const CHK_KEY  = 'mo.checkin.status.v1';
+let plan = null;              // {tables, guests, venueImage}
+let checkins = {};            // guestId -> ISO time
+let currentTableId = null;
+let selected = new Set();     // guestIds being checked in this round
+let lastParty = [];
+let staffFilter = 'all';
+
+const PALETTE = ['#2F5D50','#9C5530','#5B5EA6','#A23B45','#3B6E8F','#8A6D3B','#6B7A3D','#7A4E8C'];
+const VIP_COLOR = '#B08D2B';
+const tColor = t => t.isVip ? VIP_COLOR : PALETTE[t.id % PALETTE.length];
+const esc = s => String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const findTable = id => plan ? plan.tables.find(t=>t.id===id) : null;
+
+function loadStored(){
+  try{
+    const p = localStorage.getItem(PLAN_KEY);
+    if(p) plan = JSON.parse(p);
+    const c = localStorage.getItem(CHK_KEY);
+    if(c) checkins = JSON.parse(c);
+  }catch(e){}
+}
+function saveCheckins(){ try{ localStorage.setItem(CHK_KEY, JSON.stringify(checkins)); }catch(e){} }
+
+/* ================= CLOUD SYNC (Firebase Realtime Database, plain REST) =================
+   Set the database URL once in the staff menu (e.g. https://xxxx-default-rtdb.firebaseio.com).
+   All devices then share: /plan (the seating plan), /checkins (live status), and
+   /printQueue (print jobs picked up by the laptop helper next to the Brother printer). */
+const CLOUD_KEY = 'mo.checkin.cloud.v1';
+let cloudURL = '';
+try{ cloudURL = (localStorage.getItem(CLOUD_KEY)||'').trim().replace(/\/+$/,''); }catch(e){}
+let deviceId = '';
+try{
+  deviceId = localStorage.getItem('mo.checkin.dev') || Math.random().toString(36).slice(2,8);
+  localStorage.setItem('mo.checkin.dev', deviceId);
+}catch(e){ deviceId='dev'; }
+let cloudStream = null, cloudOk = false;
+
+function cloudFetch(path, opts){ return fetch(cloudURL + path + '.json', opts); }
+
+async function cloudInit(){
+  if(!cloudURL) return;
+  try{
+    const r = await cloudFetch('/plan');
+    if(r.ok){
+      const p = await r.json();
+      if(p && Array.isArray(p.tables)){
+        plan = p;
+        try{ localStorage.setItem(PLAN_KEY, JSON.stringify(p)); }catch(e){}
+      }
+    }
+    const c = await (await cloudFetch('/checkins')).json();
+    if(c && typeof c === 'object'){ checkins = c; saveCheckins(); }
+    cloudOk = true;
+    startCloudStream();
+    updateCloudChip();
+    refreshActive();
+  }catch(e){ cloudOk = false; updateCloudChip(); }
+}
+function startCloudStream(){
+  if(cloudStream) cloudStream.close();
+  cloudStream = new EventSource(cloudURL + '/checkins.json');
+  cloudStream.addEventListener('put', e=>{
+    try{
+      const {path, data} = JSON.parse(e.data);
+      if(path === '/'){ checkins = data || {}; }
+      else{
+        const gid = path.slice(1).split('/')[0];
+        if(data === null) delete checkins[gid]; else checkins[gid] = data;
+      }
+      saveCheckins(); refreshActive();
+    }catch(err){}
+  });
+  cloudStream.addEventListener('patch', e=>{
+    try{
+      const {data} = JSON.parse(e.data);
+      Object.assign(checkins, data||{});
+      saveCheckins(); refreshActive();
+    }catch(err){}
+  });
+  cloudStream.onopen = ()=>{ cloudOk = true; updateCloudChip(); };
+  cloudStream.onerror = ()=>{ cloudOk = false; updateCloudChip(); };
+}
+function refreshActive(){
+  const a = document.querySelector('.screen.active');
+  if(!a) return;
+  if(a.id==='scrLoad' && plan){ show('scrSearch'); return; }   // plan arrived from the cloud
+  if(a.id==='scrStaff') renderStaff();
+  else if(a.id==='scrTable') renderParty();
+  else if(a.id==='scrSearch') renderResults();
+}
+function updateCloudChip(){
+  const el = document.getElementById('cloudStatus');
+  if(!el) return;
+  if(!cloudURL){ el.textContent = 'Cloud sync: off (this device only)'; el.style.color='var(--ink-soft)'; }
+  else if(cloudOk){ el.textContent = '● Cloud sync: connected'; el.style.color='var(--accent)'; }
+  else{ el.textContent = '● Cloud sync: reconnecting…'; el.style.color='var(--warn)'; }
+}
+// single write path for check-in status — local first, then cloud
+function setCheckin(gid, isoOrNull){
+  if(isoOrNull===null) delete checkins[gid]; else checkins[gid] = isoOrNull;
+  saveCheckins();
+  if(cloudURL){
+    cloudFetch('/checkins/'+gid, isoOrNull===null
+      ? {method:'DELETE'}
+      : {method:'PUT', body: JSON.stringify(isoOrNull)}
+    ).catch(()=>{});
+  }
+}
+async function pushPrintJob(labels){
+  if(!cloudURL) return false;
+  try{
+    const r = await cloudFetch('/printQueue', {
+      method:'POST',
+      body: JSON.stringify({labels, status:'pending', t:new Date().toISOString(), d:deviceId})
+    });
+    return r.ok;
+  }catch(e){ return false; }
+}
+async function uploadPlanToCloud(){
+  if(!cloudURL){ toast('Set the cloud database URL first.'); return; }
+  if(!plan){ toast('Load a seating plan first.'); return; }
+  try{
+    const r = await cloudFetch('/plan', {method:'PUT', body: JSON.stringify(plan)});
+    if(r.ok) toast('Seating plan uploaded — every connected device will use it.');
+    else toast('Upload failed — check the database URL and rules.');
+  }catch(e){ toast('Upload failed — check the database URL and rules.'); }
+}
+
+/* ================= SCREENS ================= */
+function show(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+  bumpIdle();
+}
+
+/* ================= TOAST ================= */
+let toastEl=null, toastTimer=null;
+function toast(msg){
+  if(toastEl) toastEl.remove(); clearTimeout(toastTimer);
+  toastEl = document.createElement('div');
+  toastEl.className='toast'; toastEl.textContent=msg;
+  document.body.appendChild(toastEl);
+  requestAnimationFrame(()=>toastEl&&toastEl.classList.add('show'));
+  toastTimer = setTimeout(()=>{ toastEl&&toastEl.remove(); toastEl=null; }, 3500);
+}
+
+/* ================= PLAN LOADING ================= */
+document.getElementById('loadPlanBtn').onclick = ()=>document.getElementById('planInput').click();
+document.getElementById('planInput').addEventListener('change', e=>{
+  const f = e.target.files[0]; if(!f) return;
+  const reader = new FileReader();
+  reader.onload = ev=>{
+    try{
+      const obj = JSON.parse(String(ev.target.result));
+      if(!Array.isArray(obj.tables) || !Array.isArray(obj.guests)) throw new Error('bad');
+      plan = obj;
+      try{ localStorage.setItem(PLAN_KEY, JSON.stringify(plan)); }
+      catch(err){ toast('Plan loaded (too large to store — reload it if the iPad restarts).'); }
+      toast(`Plan loaded — ${plan.guests.length} guests, ${plan.tables.length} tables.`);
+      show('scrSearch');
+    }catch(err){ toast('That file does not look like a Magnum Opus seating plan.'); }
+  };
+  reader.readAsText(f);
+  e.target.value='';
+});
+
+/* ================= SEARCH ================= */
+const searchBox = document.getElementById('searchBox');
+searchBox.addEventListener('input', renderResults);
+function renderResults(){
+  bumpIdle();
+  const q = searchBox.value.trim().toLowerCase();
+  const box = document.getElementById('results');
+  if(q.length < 2){ box.innerHTML=''; return; }
+  const hits = plan.guests
+    .filter(g=>g.name.toLowerCase().includes(q))
+    .slice(0, 8);
+  if(hits.length===0){
+    box.innerHTML = `<div class="noresult">No guest found — please check the spelling, or ask our reception team for help.</div>`;
+    return;
+  }
+  box.innerHTML = hits.map(g=>{
+    const t = g.tableId!==null ? findTable(g.tableId) : null;
+    const chip = t ? `<span class="rtable" style="background:${tColor(t)};">${esc(t.label)}</span>` : `<span class="rtable" style="background:#999;">See reception</span>`;
+    const inb = checkins[g.id] ? `<span class="rin">✓ Checked in</span>` : '';
+    return `<button class="result-row" data-gid="${g.id}">
+      <span class="rname">${esc(g.name)}</span>${inb}${chip}</button>`;
+  }).join('');
+  box.querySelectorAll('.result-row').forEach(b=>{
+    b.addEventListener('click', ()=>openGuest(parseInt(b.dataset.gid)));
+  });
+}
+function openGuest(gid){
+  const g = plan.guests.find(x=>x.id===gid);
+  if(!g) return;
+  if(g.tableId===null){
+    // unseated guest: check them in directly, direct to reception
+    if(!checkins[g.id]) setCheckin(g.id, new Date().toISOString());
+    lastParty = [g]; currentTableId = null;
+    renderDone();
+    show('scrDone');
+    return;
+  }
+  currentTableId = g.tableId;
+  selected = new Set(checkins[g.id] ? [] : [g.id]);
+  renderParty();
+  show('scrTable');
+}
+
+/* ================= TABLE PARTY ================= */
+function renderParty(){
+  const t = findTable(currentTableId);
+  const banner = document.getElementById('tableBanner');
+  banner.style.background = `linear-gradient(135deg, ${tColor(t)}, ${shade(tColor(t))})`;
+  banner.innerHTML = `<div class="tb-name">${t.isVip?'★ ':''}${esc(t.label)}</div>
+    <div class="tb-sub">${plan.guests.filter(g=>g.tableId===t.id).length} guests at this table</div>`;
+  const members = plan.guests
+    .filter(g=>g.tableId===t.id)
+    .sort((a,b)=>a.name.localeCompare(b.name));
+  document.getElementById('partyList').innerHTML = members.map(g=>{
+    const done = !!checkins[g.id];
+    const sel = selected.has(g.id);
+    return `<button class="member ${done?'done':''} ${sel?'selected':''}" data-gid="${g.id}" ${done?'disabled':''}>
+      <span class="m-check">${done?'✓':(sel?'✓':'')}</span>
+      <span class="m-name">${esc(g.name)}</span>
+      ${done?'<span class="m-note">Checked in</span>':''}
+    </button>`;
+  }).join('');
+  document.getElementById('partyList').querySelectorAll('.member:not(.done)').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      const gid = parseInt(el.dataset.gid);
+      if(selected.has(gid)) selected.delete(gid); else selected.add(gid);
+      renderParty(); bumpIdle();
+    });
+  });
+  const btn = document.getElementById('confirmBtn');
+  btn.disabled = selected.size===0;
+  btn.textContent = selected.size ? `Check in ${selected.size} guest${selected.size===1?'':'s'}` : 'Check in';
+}
+function shade(hex){
+  const n = parseInt(hex.slice(1),16);
+  const f = c=>Math.max(0, Math.round(c*0.72));
+  return '#'+[f(n>>16&255),f(n>>8&255),f(n&255)].map(x=>x.toString(16).padStart(2,'0')).join('');
+}
+document.getElementById('backToSearch').onclick = resetToSearch;
+document.getElementById('confirmBtn').onclick = ()=>{
+  if(selected.size===0) return;
+  const now = new Date().toISOString();
+  lastParty = [];
+  selected.forEach(gid=>{
+    setCheckin(gid, now);
+    lastParty.push(plan.guests.find(g=>g.id===gid));
+  });
+  renderDone();
+  show('scrDone');
+  if(autoLabel) printLabels(lastParty);
+};
+
+/* ================= SUCCESS + MAP ================= */
+function renderDone(){
+  const t = currentTableId!==null ? findTable(currentTableId) : null;
+  document.getElementById('doneTable').textContent = t ? t.label : 'Please see reception';
+  document.getElementById('doneTable').style.color = t ? tColor(t) : 'var(--ink-soft)';
+  document.getElementById('doneNames').innerHTML =
+    lastParty.map(g=>esc(g.name)).join(' &nbsp;·&nbsp; ') +
+    (t ? '' : '<br>Our reception team will show you to your seat.');
+  renderMap(t ? t.id : null);
+}
+function roomDecorSVG(){
+  return `<svg class="room-svg" width="2000" height="1560" viewBox="0 0 2000 1560">
+    <circle cx="1000" cy="780" r="700" fill="#FBFAF6" stroke="#CFC9B8" stroke-width="3"/>
+    <circle cx="1000" cy="780" r="680" fill="none" stroke="#E7E2D5" stroke-width="1.5"/>
+    <path d="M 660 300 Q 1000 210 1340 300" fill="none" stroke="#CFC9B8" stroke-width="3"/>
+    <rect x="742" y="248" width="180" height="60" rx="6" fill="#F4F1E8" stroke="#CFC9B8" stroke-width="2"/>
+    <rect x="1078" y="248" width="180" height="60" rx="6" fill="#F4F1E8" stroke="#CFC9B8" stroke-width="2"/>
+    <text x="1000" y="238" text-anchor="middle" font-size="20" fill="#A8A294" letter-spacing="3">STAGE</text>
+    <path d="M 805 1452 q 195 66 390 0" fill="none" stroke="#CFC9B8" stroke-width="3"/>
+    <text x="1000" y="1494" text-anchor="middle" font-size="14" fill="#B7B1A2" letter-spacing="2">ENTRANCE</text>
+  </svg>`;
+}
+function renderMap(hlId){
+  const wrap = document.getElementById('mapWrap');
+  const scaleEl = document.getElementById('mapScale');
+  const avail = Math.min(document.documentElement.clientWidth - 60, 720);
+  const scale = avail / 2000;
+  wrap.style.width = Math.round(2000*scale)+'px';
+  wrap.style.height = Math.round(1560*scale)+'px';
+  scaleEl.style.transform = `scale(${scale})`;
+  const v = plan.venueImage;
+  let html = v
+    ? `<img class="venue-img" src="${v.src}" style="left:${v.x}px;top:${v.y}px;width:${v.w}px;height:${v.h}px;"/>`
+    : roomDecorSVG();
+  plan.tables.forEach(t=>{
+    const dim = hlId!==null && t.id!==hlId ? ' dim' : '';
+    const hl = t.id===hlId ? ' hl' : '';
+    const pad = 20;
+    const fsB = t.id===hlId ? 1.25 : 1;
+    if(t.type==='round'){
+      const R = (t.r||60) + pad;
+      const fs = Math.round(Math.max(15, R*.4) * fsB);
+      html += `<div class="mtable round${dim}${hl}" style="left:${t.x-R}px;top:${t.y-R}px;width:${R*2}px;height:${R*2}px;background:${tColor(t)};font-size:${fs}px;">${esc(t.label)}</div>`;
+    } else {
+      const rot = t.rotation||0, quarter=(rot%180)===90;
+      const W0=(t.w||220)+pad, H0=(t.h||90)+pad;
+      const W=quarter?H0:W0, H=quarter?W0:H0;
+      const fs = Math.round(Math.max(16, Math.min(W0,H0)*.26) * fsB);
+      const tall = H>W;
+      html += `<div class="mtable rect${dim}${hl}" style="left:${t.x-W/2}px;top:${t.y-H/2}px;width:${W}px;height:${H}px;background:${tColor(t)};font-size:${fs}px;">
+        <span style="${tall?'transform:rotate(-90deg);white-space:nowrap;':''}">${esc(t.label)}</span></div>`;
+    }
+  });
+  scaleEl.innerHTML = html;
+}
+document.getElementById('doneBtn').onclick = resetToSearch;
+
+function resetToSearch(){
+  selected = new Set(); currentTableId=null; lastParty=[];
+  searchBox.value=''; document.getElementById('results').innerHTML='';
+  show('scrSearch');
+}
+
+/* ================= STAFF (discreet triple-tap) ================= */
+let taps=[], staffDot=document.getElementById('staffDot');
+staffDot.addEventListener('click', ()=>{
+  const now=Date.now();
+  taps = taps.filter(t=>now-t<1600); taps.push(now);
+  if(taps.length>=3){ taps=[]; openStaff(); }
+});
+function openStaff(){
+  try{
+    document.getElementById('cloudUrlInput').value = cloudURL || '';
+    document.getElementById('bridgeInput').value = localStorage.getItem(BRIDGE_KEY) || '';
+  }catch(e){}
+  updateCloudChip();
+  renderStaff(); show('scrStaff');
+}
+document.getElementById('cloudSaveBtn').onclick = ()=>{
+  const v = document.getElementById('cloudUrlInput').value.trim().replace(/\/+$/,'');
+  cloudURL = v;
+  try{ localStorage.setItem(CLOUD_KEY, v); }catch(e){}
+  if(v){ toast('Connecting to cloud…'); cloudInit(); }
+  else{ if(cloudStream) cloudStream.close(); cloudOk=false; updateCloudChip(); toast('Cloud sync turned off.'); }
+};
+document.getElementById('uploadPlanBtn').onclick = uploadPlanToCloud;
+document.getElementById('bridgeSaveBtn').onclick = ()=>{
+  const v = document.getElementById('bridgeInput').value.trim();
+  try{ localStorage.setItem(BRIDGE_KEY, v); }catch(e){}
+  toast(v ? 'Print helper address saved.' : 'Print helper address cleared.');
+};
+document.getElementById('staffBack').onclick = resetToSearch;
+document.getElementById('staffSearch').addEventListener('input', renderStaffList);
+document.getElementById('staffFilters').addEventListener('click', e=>{
+  const b = e.target.closest('.chipbtn'); if(!b) return;
+  staffFilter = b.dataset.f;
+  document.querySelectorAll('#staffFilters .chipbtn').forEach(x=>x.classList.toggle('on', x===b));
+  renderStaffList();
+});
+function seatedGuests(){ return plan.guests.filter(g=>g.tableId!==null); }
+function renderStaff(){
+  const total = seatedGuests().length;
+  const inN = seatedGuests().filter(g=>checkins[g.id]).length;
+  const pct = total ? inN/total : 0;
+  const ok = pct >= 0.8;
+  document.getElementById('staffStats').innerHTML = `
+    <div class="stat-card"><div class="v">${total}</div><div class="l">Seated guests</div></div>
+    <div class="stat-card"><div class="v">${inN}</div><div class="l">Checked in</div></div>
+    <div class="stat-card"><div class="v">${total-inN}</div><div class="l">Not yet</div></div>
+    <div class="stat-card pct ${ok?'ok':''}"><div class="v">${Math.round(pct*100)}%</div><div class="l">Checked in</div></div>`;
+  const db = document.getElementById('doorBanner');
+  db.className = 'door-banner ' + (ok?'open':'closed');
+  db.textContent = ok ? '✓ 80% REACHED — OPEN THE BALLROOM DOORS' : 'DOORS CLOSED — WAITING FOR 80%';
+  renderStaffList();
+}
+function renderStaffList(){
+  const q = document.getElementById('staffSearch').value.trim().toLowerCase();
+  let list = plan.guests.slice().sort((a,b)=>a.name.localeCompare(b.name));
+  if(q) list = list.filter(g=>g.name.toLowerCase().includes(q));
+  if(staffFilter==='in') list = list.filter(g=>checkins[g.id]);
+  if(staffFilter==='out') list = list.filter(g=>!checkins[g.id]);
+  document.getElementById('staffList').innerHTML = list.map(g=>{
+    const t = g.tableId!==null ? findTable(g.tableId) : null;
+    const inAt = checkins[g.id];
+    const time = inAt ? new Date(inAt).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : '';
+    return `<div class="srow">
+      <span class="sn">${esc(g.name)}</span>
+      <span class="st">${t?esc(t.label):'Unseated'}</span>
+      <span class="stime">${time}</span>
+      <button class="stog out" style="min-width:44px;" data-lbl="${g.id}" title="Print label">🏷</button>
+      <button class="stog ${inAt?'in':'out'}" data-gid="${g.id}">${inAt?'✓ In':'Not in'}</button>
+    </div>`;
+  }).join('') || '<div class="noresult">No guests match.</div>';
+  document.querySelectorAll('#staffList .stog[data-gid]').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      const gid = parseInt(b.dataset.gid);
+      setCheckin(gid, checkins[gid] ? null : new Date().toISOString());
+      renderStaff();
+    });
+  });
+  document.querySelectorAll('#staffList .stog[data-lbl]').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      const g = plan.guests.find(x=>x.id===parseInt(b.dataset.lbl));
+      if(g) printLabels([g]);
+    });
+  });
+}
+document.getElementById('exportCsvBtn').onclick = ()=>{
+  let csv = 'Name,Table,Checked In,Time\n';
+  plan.guests.slice().sort((a,b)=>a.name.localeCompare(b.name)).forEach(g=>{
+    const t = g.tableId!==null ? findTable(g.tableId) : null;
+    const inAt = checkins[g.id];
+    csv += `"${g.name.replace(/"/g,'""')}","${t?t.label:'Unseated'}",${inAt?'Yes':'No'},${inAt?new Date(inAt).toLocaleTimeString():''}\n`;
+  });
+  const blob = new Blob([csv], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `checkin-status-${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+};
+document.getElementById('reloadPlanBtn').onclick = ()=>document.getElementById('planInput').click();
+document.getElementById('resetBtn').onclick = ()=>{
+  const v = prompt('This clears EVERY check-in on ALL devices and cannot be undone.\n\nType RESET (in capitals) to confirm:');
+  if(v === null) return;
+  if(v.trim() !== 'RESET'){ toast('Reset cancelled — the confirmation word did not match.'); return; }
+  checkins = {}; saveCheckins();
+  if(cloudURL) cloudFetch('/checkins', {method:'DELETE'}).catch(()=>{});
+  renderStaff();
+  toast('All check-ins have been reset.');
+};
+
+/* ================= RED-PACKET LABELS (Brother QL-820NWB via AirPrint) =================
+   Each guest gets one DK-11201 label (29 × 90 mm): guest name large, table below,
+   wedding wordmark on top. window.print() opens the iPad print dialog — pick the
+   Brother QL-820NWB (AirPrint) once and it is remembered for the day.            */
+const AUTO_KEY = 'mo.checkin.autolabel.v1';
+let autoLabel = false;
+try{ autoLabel = localStorage.getItem(AUTO_KEY)==='1'; }catch(e){}
+// Long names wrap to a second line after the 3rd word (e.g.
+// "Agustinus Rudolf Indra" / "Malemna Tarigan")
+function splitName(name){
+  const words = name.trim().split(/\s+/);
+  if(words.length > 3 && name.trim().length > 20)
+    return [words.slice(0,3).join(' '), words.slice(3).join(' ')];
+  return [name.trim()];
+}
+function nameSizeMm(lines){
+  const longest = Math.max(...lines.map(l=>l.length));
+  if(lines.length===1){
+    if(longest<=13) return 10;
+    if(longest<=18) return 8.4;
+    if(longest<=24) return 6.8;
+    return 5.6;
+  }
+  if(longest<=18) return 6.6;
+  if(longest<=24) return 5.6;
+  return 4.8;
+}
+function labelData(guests){
+  return guests.map(g=>{
+    const t = g.tableId!==null && g.tableId!==undefined ? findTable(g.tableId) : null;
+    return { name: g.name, table: t ? t.label : 'Guest' };
+  });
+}
+function buildLabels(guests){
+  const area = document.getElementById('labelArea');
+  area.innerHTML = labelData(guests).map(L=>{
+    const lines = splitName(L.name);
+    const fs = nameSizeMm(lines);
+    return `<div class="plabel">
+      <div class="pl-top">With Gratitude</div>
+      ${lines.map(ln=>`<div class="pl-name" style="font-size:${fs}mm;">${esc(ln)}</div>`).join('')}
+      <div class="pl-table">${esc(L.table)}</div>
+    </div>`;
+  }).join('');
+}
+/* Silent print pipeline: cloud print queue (any device → the laptop helper)
+   → local helper on the same network → iPad AirPrint dialog as last resort. */
+async function printLabels(guests){
+  if(!guests || !guests.length){ toast('No guests to print.'); return; }
+  const labels = labelData(guests);
+  if(await pushPrintJob(labels)){
+    toast(`🏷 Printing ${labels.length} label${labels.length===1?'':'s'}…`);
+    return;
+  }
+  const local = bridgeURL();
+  if(local){
+    try{
+      const res = await fetch(local + '/print', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({labels})
+      });
+      if(res.ok){ toast(`🏷 Printing ${labels.length} label${labels.length===1?'':'s'}…`); return; }
+    }catch(e){}
+    toast('Print helper not reachable — using this device\'s print dialog.');
+  }
+  buildLabels(guests);
+  setTimeout(()=>window.print(), 60);
+}
+const BRIDGE_KEY = 'mo.checkin.bridge.v1';
+function bridgeURL(){
+  let saved = '';
+  try{ saved = (localStorage.getItem(BRIDGE_KEY)||'').trim(); }catch(e){}
+  if(saved){
+    if(!/^https?:/i.test(saved)) saved = 'http://' + saved;
+    if(!/:\d+$/.test(saved.replace(/^https?:\/\//,''))) saved += ':9797';
+    return saved.replace(/\/$/,'');
+  }
+  if(location.port === '9797') return location.origin;   // served by the helper itself
+  return null;
+}
+document.getElementById('printLabelsBtn').onclick = ()=> printLabels(lastParty);
+document.getElementById('testLabelBtn').onclick = ()=>
+  printLabels([{name:'Test Guest Name', tableId: plan && plan.tables.length ? plan.tables[0].id : null}]);
+const autoBtn = document.getElementById('autoLabelBtn');
+function renderAutoBtn(){ autoBtn.textContent = 'Auto-print labels: ' + (autoLabel?'ON':'OFF');
+  autoBtn.style.background = autoLabel ? 'var(--accent-soft)' : ''; }
+autoBtn.onclick = ()=>{
+  autoLabel = !autoLabel;
+  try{ localStorage.setItem(AUTO_KEY, autoLabel?'1':'0'); }catch(e){}
+  renderAutoBtn();
+  toast(autoLabel ? 'Labels will print automatically after each check-in.' : 'Auto-print off.');
+};
+renderAutoBtn();
+
+/* ================= IDLE RESET (kiosk) ================= */
+let idleTimer=null;
+function bumpIdle(){
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(()=>{
+    const active = document.querySelector('.screen.active');
+    if(active && (active.id==='scrTable' || active.id==='scrDone')) resetToSearch();
+    else if(active && active.id==='scrSearch' && searchBox.value){ searchBox.value=''; document.getElementById('results').innerHTML=''; }
+  }, 75000);
+}
+['touchstart','click','keydown'].forEach(ev=>document.addEventListener(ev, bumpIdle, {passive:true}));
+
+/* ================= BOOT ================= */
+loadStored();
+if(plan) show('scrSearch'); else show('scrLoad');
+if(cloudURL) cloudInit();   // may bring the plan + live status from the cloud
+</script>
+</body>
+</html>
