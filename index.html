@@ -768,8 +768,11 @@ document.getElementById('resetBtn').onclick = ()=>{
    wedding wordmark on top. window.print() opens the iPad print dialog — pick the
    Brother QL-820NWB (AirPrint) once and it is remembered for the day.            */
 const AUTO_KEY = 'mo.checkin.autolabel.v1';
-let autoLabel = false;
-try{ autoLabel = localStorage.getItem(AUTO_KEY)==='1'; }catch(e){}
+let autoLabel = true;   // ON by default — disabling requires the staff password
+try{
+  const stored = localStorage.getItem(AUTO_KEY);
+  if(stored !== null) autoLabel = stored === '1';
+}catch(e){}
 // Long names wrap to a second line after the 3rd word (e.g.
 // "Agustinus Rudolf Indra" / "Malemna Tarigan")
 function splitName(name){
@@ -850,6 +853,7 @@ const autoBtn = document.getElementById('autoLabelBtn');
 function renderAutoBtn(){ autoBtn.textContent = 'Auto-print labels: ' + (autoLabel?'ON':'OFF');
   autoBtn.style.background = autoLabel ? 'var(--accent-soft)' : ''; }
 autoBtn.onclick = ()=>{
+  if(autoLabel && !askPin('Turn OFF automatic label printing?\nGuests checked in while it is off will get no red-packet label.')) return;
   autoLabel = !autoLabel;
   try{ localStorage.setItem(AUTO_KEY, autoLabel?'1':'0'); }catch(e){}
   renderAutoBtn();
