@@ -45,6 +45,14 @@
     .gf-left,.gf-right,.gf-c{display:none;}
     .screen{padding:70px 20px 72px;}
   }
+  /* ---------- MONITOR (view-only) MODE ---------- */
+  body.monitor #staffHeading,
+  body.monitor #staffTopActions,
+  body.monitor #staffSetupCard,
+  body.monitor .staff-tools{display:none !important;}
+  .srow .sstatus{min-width:64px;text-align:right;font-weight:700;font-size:14px;}
+  .srow .sstatus.in{color:var(--accent);}
+  .srow .sstatus.out{color:var(--ink-soft);}
   /* ---------- BRAND ---------- */
   .brand{display:flex;flex-direction:column;align-items:center;gap:8px;margin:10px 0 6px;}
   .brand-name{
@@ -55,6 +63,12 @@
   .brand-rule{width:180px;height:2px;background:linear-gradient(90deg,transparent,var(--floral-soft),transparent);}
   .brand.small .brand-name{font-size:34px;}
   .brand.small{margin:2px 0 2px;}
+  /* phones: keep the couple's name on a single row (placed after the base
+     brand rules so it wins on source order at equal specificity) */
+  @media (max-width:699px){
+    .brand-name{font-size:8.6vw;white-space:nowrap;padding:0 6px;}
+    .brand.small .brand-name{font-size:7vw;}
+  }
 
   h2.lead{font-family:'Cormorant Garamond',Georgia,serif;font-weight:600;font-size:30px;margin:18px 0 6px;text-align:center;color:var(--orange-deep);}
   .sublead{font-size:15px;color:var(--ink-soft);text-align:center;margin:0 0 22px;max-width:560px;line-height:1.55;}
@@ -62,13 +76,13 @@
   /* ---------- SEARCH ---------- */
   .search-wrap{width:100%;max-width:620px;position:relative;}
   .search-box{
-    width:100%;font-size:22px;padding:20px 24px 20px 58px;border:2px solid #D8D2AC;
+    width:100%;font-family:'Cormorant Garamond',Georgia,serif;font-weight:700;font-size:26px;letter-spacing:.2px;color:var(--orange-deep);padding:18px 24px 18px 58px;border:2px solid #D8D2AC;
     border-radius:20px;background:#FDFCF1;outline:none;transition:border-color .2s;
-    box-shadow:0 2px 10px rgba(163,155,47,.08);color:var(--ink);
+    box-shadow:0 2px 10px rgba(163,155,47,.08);
     -webkit-user-select:text;user-select:text;
   }
   .search-box:focus{border-color:var(--orange);}
-  .search-box::placeholder{color:#F0975C;opacity:1;}
+  .search-box::placeholder{color:#F2A26B;opacity:1;font-weight:500;font-style:italic;}
   .search-ico{position:absolute;left:20px;top:50%;transform:translateY(-50%);pointer-events:none;display:flex;align-items:center;}
   .results{width:100%;max-width:620px;margin-top:14px;}
   .result-row{
@@ -232,6 +246,13 @@
     </p>
     <input type="file" id="planInput" accept=".json,application/json" style="display:none;" />
     <button class="btn gold" style="width:100%;" id="loadPlanBtn">Choose seating plan file</button>
+    <div style="display:flex;align-items:center;gap:10px;margin:18px 0 6px;color:var(--ink-soft);font-size:12px;letter-spacing:2px;">
+      <span style="flex:1;height:1px;background:var(--line);"></span>OR<span style="flex:1;height:1px;background:var(--line);"></span>
+    </div>
+    <button class="btn slim" style="width:100%;" id="monitorBtn">Monitor check-in (view only)</button>
+    <p class="sublead" style="margin:10px 0 0;font-size:12.5px;">
+      Watch live queue &amp; seating status from the cloud on a phone. No check-ins from this mode.
+    </p>
   </div>
 </div>
 
@@ -286,8 +307,8 @@
 <!-- ============ STAFF ============ -->
 <div class="screen" id="scrStaff">
   <div class="brand small"><div class="brand-name">Stephen &amp; Stefanie</div></div>
-  <h2 class="lead" style="margin:4px 0 10px;">Reception — Check-in Status</h2>
-  <div class="actions" style="max-width:760px;margin:0 0 10px;">
+  <h2 class="lead" id="staffHeading" style="margin:4px 0 10px;">Reception — Check-in Status</h2>
+  <div class="actions" id="staffTopActions" style="max-width:760px;margin:0 0 10px;">
     <button class="btn primary" id="staffBack">← Back to guest check-in</button>
   </div>
   <div class="staff-tools" style="margin:0 0 8px;">
@@ -297,7 +318,7 @@
     <button class="btn slim" id="reloadPlanBtn">Load new plan</button>
     <button class="btn slim" id="resetBtn" style="color:var(--warn);">Reset check-ins</button>
   </div>
-  <div style="width:100%;max-width:760px;background:#fff;border:1.5px solid var(--line);border-radius:14px;padding:13px 15px;margin-bottom:14px;">
+  <div id="staffSetupCard" style="width:100%;max-width:760px;background:#fff;border:1.5px solid var(--line);border-radius:14px;padding:13px 15px;margin-bottom:14px;">
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px;">
       <input type="text" id="cloudUrlInput" placeholder="Firebase database URL (https://…firebaseio.com)"
         style="flex:1;min-width:250px;font-size:14px;padding:10px 12px;border:1.5px solid var(--line);border-radius:9px;-webkit-user-select:text;user-select:text;" autocomplete="off" autocapitalize="off" />
@@ -337,6 +358,9 @@ let currentTableId = null;
 let selected = new Set();     // guestIds being checked in this round
 let lastParty = [];
 let staffFilter = 'all';
+let monitorMode = false;                       // view-only queue monitor (mobile)
+const MONITOR_KEY = 'mo.checkin.monitor.v1';
+const MONITOR_URL = 'https://wedding-checkin-2ca1f-default-rtdb.asia-southeast1.firebasedatabase.app';
 
 const PALETTE = ['#2F5D50','#9C5530','#5B5EA6','#A23B45','#3B6E8F','#8A6D3B','#6B7A3D','#7A4E8C'];
 const VIP_COLOR = '#B08D2B';
@@ -416,7 +440,7 @@ function startCloudStream(){
 function refreshActive(){
   const a = document.querySelector('.screen.active');
   if(!a) return;
-  if(a.id==='scrLoad' && plan){ show('scrSearch'); return; }   // plan arrived from the cloud
+  if(a.id==='scrLoad' && plan){ show(monitorMode?'scrStaff':'scrSearch'); return; }   // plan arrived from the cloud
   if(a.id==='scrStaff') renderStaff();
   else if(a.id==='scrTable') renderParty();
   else if(a.id==='scrSearch') renderResults();
@@ -658,8 +682,19 @@ let taps=[], staffDot=document.getElementById('staffDot');
 staffDot.addEventListener('click', ()=>{
   const now=Date.now();
   taps = taps.filter(t=>now-t<1600); taps.push(now);
-  if(taps.length>=3){ taps=[]; openStaff(); }
+  if(taps.length>=3){
+    taps=[];
+    if(monitorMode) exitMonitor();   // discreet way off the view-only monitor
+    else openStaff();
+  }
 });
+function exitMonitor(){
+  if(!askMonitorPin('Leave the view-only monitor and switch this device to full check-in?')) return;
+  try{ localStorage.removeItem(MONITOR_KEY); }catch(e){}
+  monitorMode = false;
+  document.body.classList.remove('monitor');
+  location.reload();
+}
 function openStaff(){
   try{
     document.getElementById('cloudUrlInput').value = cloudURL || '';
@@ -677,15 +712,42 @@ document.getElementById('cloudSaveBtn').onclick = ()=>{
 };
 // destructive plan actions are guarded by the staff password
 const STAFF_PIN = '192837';
+const MONITOR_PIN = '182736';   // separate password for the view-only monitor (Firebase URL is baked in)
 function askPin(message){
   const v = prompt(message + '\n\nEnter the staff password to continue:');
   if(v === null) return false;
   if(v.trim() !== STAFF_PIN){ toast('Wrong password — action cancelled.'); return false; }
   return true;
 }
+function askMonitorPin(message){
+  const v = prompt(message + '\n\nEnter the monitor password to continue:');
+  if(v === null) return false;
+  if(v.trim() !== MONITOR_PIN){ toast('Wrong password — action cancelled.'); return false; }
+  return true;
+}
 document.getElementById('uploadPlanBtn').onclick = ()=>{
   if(!askPin('Upload the seating plan to the cloud?\nThis REPLACES the plan for every connected device.')) return;
   uploadPlanToCloud();
+};
+
+/* ---- MONITOR (view-only) MODE ---- */
+async function startMonitor(){
+  monitorMode = true;
+  document.body.classList.add('monitor');
+  cloudURL = MONITOR_URL;
+  try{ localStorage.setItem(CLOUD_KEY, MONITOR_URL); localStorage.setItem(MONITOR_KEY, '1'); }catch(e){}
+  toast('Connecting to cloud…');
+  await cloudInit();
+  if(!plan){
+    toast('Could not load the seating plan from the cloud — check your connection.');
+    return;
+  }
+  renderStaff();
+  show('scrStaff');
+}
+document.getElementById('monitorBtn').onclick = ()=>{
+  if(!askMonitorPin('Open the view-only queue monitor?\nThis device will NOT be able to check anyone in.')) return;
+  startMonitor();
 };
 document.getElementById('bridgeSaveBtn').onclick = ()=>{
   const v = document.getElementById('bridgeInput').value.trim();
@@ -726,6 +788,15 @@ function renderStaffList(){
     const t = g.tableId!==null ? findTable(g.tableId) : null;
     const inAt = checkins[g.id];
     const time = inAt ? new Date(inAt).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : '';
+    if(monitorMode){
+      // view-only: guest name, table, arrival time and a read-only status — no check-in controls
+      return `<div class="srow">
+        <span class="sn">${esc(g.name)}</span>
+        <span class="st">${t?esc(t.label):'Unseated'}</span>
+        <span class="stime">${time}</span>
+        <span class="sstatus ${inAt?'in':'out'}">${inAt?'✓ In':'—'}</span>
+      </div>`;
+    }
     return `<div class="srow">
       <span class="sn">${esc(g.name)}</span>
       <span class="st">${t?esc(t.label):'Unseated'}</span>
@@ -734,6 +805,7 @@ function renderStaffList(){
       <button class="stog ${inAt?'in':'out'}" data-gid="${g.id}">${inAt?'✓ In':'Not in'}</button>
     </div>`;
   }).join('') || '<div class="noresult">No guests match.</div>';
+  if(monitorMode) return;   // no interactive toggles in view-only mode
   // two-step toggle (both directions) — first tap arms the button, second tap
   // within 3 seconds confirms; it reverts by itself otherwise. Fat-finger-proof.
   document.querySelectorAll('#staffList .stog[data-gid]').forEach(b=>{
@@ -904,7 +976,11 @@ function bumpIdle(){
 
 /* ================= BOOT ================= */
 loadStored();
-if(plan) show('scrSearch'); else show('scrLoad');
+try{ if(localStorage.getItem(MONITOR_KEY)==='1'){ monitorMode = true; document.body.classList.add('monitor'); cloudURL = MONITOR_URL; } }catch(e){}
+if(monitorMode){
+  show(plan ? 'scrStaff' : 'scrLoad');   // waits on scrLoad; cloudInit swaps to scrStaff when the plan arrives
+  if(plan) renderStaff();
+} else if(plan){ show('scrSearch'); } else { show('scrLoad'); }
 if(cloudURL) cloudInit();   // may bring the plan + live status from the cloud
 </script>
 </body>
