@@ -241,11 +241,11 @@
   <div class="load-card">
     <h2 class="lead" style="margin-top:0;">Set up this device</h2>
     <p class="sublead" style="margin-bottom:24px;">
-      Load the seating plan file exported from the Magnum Opus planner
-      (<b>Save file</b> → a <b>.json</b> file). This only needs to be done once.
+      This device downloads the seating plan from the wedding cloud, so every
+      check-in device uses exactly the same plan.
     </p>
     <input type="file" id="planInput" accept=".json,application/json" style="display:none;" />
-    <button class="btn gold" style="width:100%;" id="loadPlanBtn">Choose seating plan file</button>
+    <button class="btn gold" style="width:100%;" id="setupCloudBtn">Connect &amp; load seating plan</button>
     <div style="display:flex;align-items:center;gap:10px;margin:18px 0 6px;color:var(--ink-soft);font-size:12px;letter-spacing:2px;">
       <span style="flex:1;height:1px;background:var(--line);"></span>OR<span style="flex:1;height:1px;background:var(--line);"></span>
     </div>
@@ -299,7 +299,6 @@
   <div class="checked-names" id="doneNames"></div>
   <div class="map-wrap" id="mapWrap"><div class="map-scale" id="mapScale"></div></div>
   <div class="actions" style="max-width:620px;">
-    <button class="btn" id="printLabelsBtn" style="flex:0 0 auto;">🏷&nbsp; Print labels</button>
     <button class="btn primary" id="doneBtn" style="font-size:21px;padding:22px;">✓&nbsp; Check-in completed</button>
   </div>
 </div>
@@ -315,7 +314,7 @@
     <button class="btn slim" id="exportCsvBtn">Export CSV</button>
     <button class="btn slim" id="testLabelBtn">🏷 Test label</button>
     <button class="btn slim" id="autoLabelBtn">Auto-print labels: OFF</button>
-    <button class="btn slim" id="reloadPlanBtn">Load new plan</button>
+    <button class="btn slim" id="reloadPlanBtn">Load new plan → cloud</button>
     <button class="btn slim" id="resetBtn" style="color:var(--warn);">Reset check-ins</button>
   </div>
   <div id="staffSetupCard" style="width:100%;max-width:760px;background:#fff;border:1.5px solid var(--line);border-radius:14px;padding:13px 15px;margin-bottom:14px;">
@@ -502,8 +501,23 @@ function toast(msg){
   toastTimer = setTimeout(()=>{ toastEl&&toastEl.remove(); toastEl=null; }, 3500);
 }
 
-/* ================= PLAN LOADING ================= */
-document.getElementById('loadPlanBtn').onclick = ()=>document.getElementById('planInput').click();
+/* ================= PLAN LOADING (cloud-first) =================
+   Devices never keep a local-only plan: setup pulls the plan from the wedding
+   cloud, and loading a plan file always pushes it to the cloud too, so every
+   device stays consistent. */
+document.getElementById('setupCloudBtn').onclick = async ()=>{
+  if(!askMonitorPin('Connect this device to the wedding cloud and load the seating plan?')) return;
+  cloudURL = MONITOR_URL;
+  try{ localStorage.setItem(CLOUD_KEY, MONITOR_URL); }catch(e){}
+  toast('Connecting to the wedding cloud…');
+  await cloudInit();
+  if(!plan){
+    toast('Could not load the seating plan from the cloud — check the connection, or upload a plan from the staff menu.');
+    return;
+  }
+  toast(`Plan loaded — ${plan.guests.length} guests, ${plan.tables.length} tables.`);
+  show('scrSearch');
+};
 document.getElementById('planInput').addEventListener('change', e=>{
   const f = e.target.files[0]; if(!f) return;
   const reader = new FileReader();
@@ -514,7 +528,14 @@ document.getElementById('planInput').addEventListener('change', e=>{
       plan = obj;
       try{ localStorage.setItem(PLAN_KEY, JSON.stringify(plan)); }
       catch(err){ toast('Plan loaded (too large to store — reload it if this device restarts).'); }
-      toast(`Plan loaded — ${plan.guests.length} guests, ${plan.tables.length} tables.`);
+      // a plan file ALWAYS goes to the cloud — no local-only plans
+      if(!cloudURL){
+        cloudURL = MONITOR_URL;
+        try{ localStorage.setItem(CLOUD_KEY, MONITOR_URL); }catch(e2){}
+        cloudInit();
+      }
+      uploadPlanToCloud();
+      toast(`Plan loaded — ${plan.guests.length} guests, ${plan.tables.length} tables. Uploading to cloud…`);
       show('scrSearch');
     }catch(err){ toast('That file does not look like a Magnum Opus seating plan.'); }
   };
@@ -850,8 +871,8 @@ document.getElementById('exportCsvBtn').onclick = ()=>{
   document.body.appendChild(a); a.click(); a.remove();
 };
 document.getElementById('reloadPlanBtn').onclick = ()=>{
-  // free on first setup; guarded once a plan is already loaded
-  if(plan && !askPin('Load a NEW seating plan file?\nThis replaces the plan on this device.')) return;
+  // loading a file always pushes it to the cloud — this replaces the plan EVERYWHERE
+  if(plan && !askPin('Load a NEW seating plan file?\nIt will be uploaded to the cloud and replace the plan on EVERY device.')) return;
   document.getElementById('planInput').click();
 };
 document.getElementById('resetBtn').onclick = ()=>{
@@ -947,7 +968,6 @@ function bridgeURL(){
   if(location.port === '9797') return location.origin;   // served by the helper itself
   return null;
 }
-document.getElementById('printLabelsBtn').onclick = ()=> printLabels(lastParty);
 document.getElementById('testLabelBtn').onclick = ()=>
   printLabels([{name:'Test Guest Name', tableId: plan && plan.tables.length ? plan.tables[0].id : null}]);
 const autoBtn = document.getElementById('autoLabelBtn');
